@@ -80,7 +80,7 @@ func (s *UserService) SignUp(ctx context.Context, req *pb.UserSignUpRequest) (*p
 	}
 
 	s.notifSvc.DeleteUserNotifValue(ctx, model.Phone(req.GetPhone()))
-	return s.generateTokenResponse(&jwt.UserClaims{UserID: uint(userId),
+	return s.generateTokenResponse(ctx, &jwt.UserClaims{UserID: uint(userId),
 		Phone:       req.GetPhone(),
 		Permissions: uint64(user.Permissions),
 		Roles:       uint64(perm.RestaurantOwner)},
@@ -107,7 +107,7 @@ func (s *UserService) Login(ctx context.Context, req *pb.UserLoginRequest) (*pb.
 	}
 
 	s.notifSvc.DeleteUserNotifValue(ctx, model.Phone(req.GetPhone()))
-	return s.generateTokenResponse(&jwt.UserClaims{UserID: uint(user.ID),
+	return s.generateTokenResponse(ctx, &jwt.UserClaims{UserID: uint(user.ID),
 		Phone:       string(user.Phone),
 		Permissions: uint64(user.Permissions),
 		Roles:       uint64(user.Roles)}, true)
@@ -150,11 +150,11 @@ func (s *UserService) Logout(ctx context.Context, token string) error {
 		return err
 	}
 
-	if ok := s.svc.IsBannedToken(ctx, token); ok {
+	if ok := !s.svc.IsValidToken(ctx, token); ok {
 		return ErrInvalidRefreshToken
 	}
 
-	err = s.svc.CreateBannedToken(ctx, model.TokenBlacklist{
+	err = s.svc.DeleteToken(ctx, model.TokenWhitelist{
 		Value:     token,
 		ExpiresAt: userClaims.ExpiresAt.Time,
 		UserID:    model.UserID(userClaims.UserID),
@@ -170,7 +170,7 @@ func (s *UserService) RefreshToken(ctx context.Context, token string) (*pb.UserT
 		return nil, err
 	}
 
-	if ok := s.svc.IsBannedToken(ctx, token); ok {
+	if ok := !s.svc.IsValidToken(ctx, token); ok {
 		return nil, ErrInvalidRefreshToken
 	}
 
@@ -186,9 +186,10 @@ func (s *UserService) RefreshToken(ctx context.Context, token string) (*pb.UserT
 	userClaims.Roles = uint64(user.Roles)
 	userClaims.Phone = string(user.Phone)
 
+	// TODO: DELETE THE TOKEN WITHOUT REPLACING?
 	if time.Until(userClaims.ExpiresAt.Time)/time.Hour < 12 {
 
-		err = s.svc.CreateBannedToken(ctx, model.TokenBlacklist{
+		err = s.svc.DeleteToken(ctx, model.TokenWhitelist{
 			Value:     token,
 			ExpiresAt: userClaims.ExpiresAt.Time,
 			UserID:    model.UserID(userClaims.UserID),
@@ -197,10 +198,10 @@ func (s *UserService) RefreshToken(ctx context.Context, token string) (*pb.UserT
 		if err != nil {
 			return nil, err
 		}
-		return s.generateTokenResponse(userClaims, true)
+		return s.generateTokenResponse(ctx, userClaims, true)
 	}
 
-	return s.generateTokenResponse(userClaims, false)
+	return s.generateTokenResponse(ctx, userClaims, false)
 }
 
 func (s *UserService) createToken(claims *jwt.UserClaims, isRefresh bool) (string, int64, error) {
@@ -224,7 +225,7 @@ func (s *UserService) createToken(claims *jwt.UserClaims, isRefresh bool) (strin
 	return token, int64(exp * 60), nil
 }
 
-func (s *UserService) generateTokenResponse(claims *jwt.UserClaims, genRefresh bool) (*pb.UserTokenResponse, error) {
+func (s *UserService) generateTokenResponse(ctx context.Context, claims *jwt.UserClaims, genRefresh bool) (*pb.UserTokenResponse, error) {
 	cp := *claims
 	access, accessMaxAge, err := s.createToken(claims, false)
 	if err != nil {
@@ -240,6 +241,14 @@ func (s *UserService) generateTokenResponse(claims *jwt.UserClaims, genRefresh b
 		refresh, refreshMaxAge, err = s.createToken(&cp, true)
 
 		if err != nil {
+			return nil, err
+		}
+
+		if err := s.svc.CreateToken(ctx, model.TokenWhitelist{
+			Value:     refresh,
+			ExpiresAt: claims.ExpiresAt.Time,
+			UserID:    model.UserID(claims.UserID),
+		}); err != nil {
 			return nil, err
 		}
 	}

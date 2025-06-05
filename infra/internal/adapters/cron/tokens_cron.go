@@ -16,7 +16,7 @@ func SetTokenDeleterJob(db *gorm.DB, interval int) {
 	job.Every(interval).Hours().Do(func() {
 		logger := appCtx.GetLogger(context.Background())
 		logger.Info("STARTING TOKEN DELETER CRON JOB")
-		err := db.Where("expires_at < ?", time.Now()).Delete(&types.TokenWhitelist{}).Error
+		err := db.Delete(&types.TokenWhitelist{}, "expires_at < ?", time.Now()).Error
 		if err != nil {
 			logger.Error("TOKEN DELETER CRON JOB FAILED", err)
 		}

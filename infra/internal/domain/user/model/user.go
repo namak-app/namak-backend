@@ -1,7 +1,8 @@
 package model
 
 import (
-	"encoding/base64"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"regexp"
 	"strings"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/KhoshMaze/khoshmaze-backend/internal/domain/permission/model"
 	restaurantModel "github.com/KhoshMaze/khoshmaze-backend/internal/domain/restaurant/model"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type (
@@ -56,13 +56,10 @@ type TokenWhitelist struct {
 	UserID    UserID
 }
 
-func (t *TokenWhitelist) HashTokenValue() error{
-	hash, err := bcrypt.GenerateFromPassword([]byte(t.Value), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	t.Value = base64.StdEncoding.EncodeToString(hash)
-	return nil
+func (t *TokenWhitelist) HashValue() {
+	hasher := sha256.New()
+	hasher.Write([]byte(t.Value))
+	t.Value = hex.EncodeToString(hasher.Sum(nil))
 }
 
 type UserFilter struct {

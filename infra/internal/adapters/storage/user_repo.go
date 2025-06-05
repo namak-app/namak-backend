@@ -50,7 +50,11 @@ func (r *userRepo) DeleteToken(ctx context.Context, tokenDomain model.TokenWhite
 		UserID:    uint(tokenDomain.UserID),
 	}
 
-	return r.db.Table("token_whitelists").WithContext(ctx).Delete(token).Error
+	return r.db.WithContext(ctx).Delete(token, "value = ?", token.Value).Error
+}
+
+func (r *userRepo) DeleteAllTokens(ctx context.Context, userID model.UserID) error {
+	return r.db.Delete(&types.TokenWhitelist{}, "user_id = ?", userID).Error
 }
 
 func (r *userRepo) GetByFilter(ctx context.Context, filter *model.UserFilter) (*model.User, error) {

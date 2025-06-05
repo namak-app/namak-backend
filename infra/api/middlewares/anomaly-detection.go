@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/oschwald/geoip2-golang"
+	"golang.org/x/exp/rand"
 
 	"github.com/KhoshMaze/khoshmaze-backend/api/utils"
 	"github.com/KhoshMaze/khoshmaze-backend/internal/adapters/cache"
@@ -170,10 +171,13 @@ func (ga *GeoAnomalyService) DetectAnomalyMiddleware(jwtSecret []byte) fiber.Han
 			}
 
 			oc.Set(ctx, fmt.Sprintf("geo:history:%d:flags", userClaims.UserID), ga.ttl, count+1)
+			
+			min_rand_flag := 3
+			max_rand_flag := 5
+			// This is for the detector behavior to be less deterministic
+			if count > rand.Intn(max_rand_flag-min_rand_flag+1)+min_rand_flag {
 
-			if count+1 >= 3 {
-
-				ga.userSvc.CreateBannedToken(ctx, model.TokenBlacklist{
+				ga.userSvc.DeleteToken(ctx, model.TokenWhitelist{
 					ExpiresAt: userClaims.ExpiresAt.Time,
 					Value:     token,
 					UserID:    model.UserID(userClaims.UserID),
@@ -188,7 +192,7 @@ func (ga *GeoAnomalyService) DetectAnomalyMiddleware(jwtSecret []byte) fiber.Han
 			}
 
 		}
-		
+
 		return c.Next()
 	}
 }

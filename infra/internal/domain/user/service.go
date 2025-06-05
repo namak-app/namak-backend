@@ -34,7 +34,10 @@ func (s *service) CreateUser(ctx context.Context, user model.User) (model.UserID
 }
 
 func (s *service) IsValidToken(ctx context.Context, value string) bool {
-	err := s.repo.IsValidToken(ctx, value)
+	// Fix this later and hash the values without creating a struct
+	tk := &model.TokenWhitelist{Value: value}
+	tk.HashValue()
+	err := s.repo.IsValidToken(ctx, tk.Value)
 	if err != nil {
 		return false
 	}
@@ -42,17 +45,17 @@ func (s *service) IsValidToken(ctx context.Context, value string) bool {
 }
 
 func (s *service) CreateToken(ctx context.Context, token model.TokenWhitelist) error {
-	if err := token.HashTokenValue(); err != nil {
-		return ErrTokenHash
-	}
+	token.HashValue()
 	return s.repo.CreateToken(ctx, token)
 }
 
 func (s *service) DeleteToken(ctx context.Context, token model.TokenWhitelist) error {
-	if err := token.HashTokenValue(); err != nil {
-		return ErrTokenHash
-	}
+	token.HashValue()
 	return s.repo.DeleteToken(ctx, token)
+}
+
+func (s *service) DeleteAllTokens(ctx context.Context, id model.UserID) error {
+	return s.repo.DeleteAllTokens(ctx, id)
 }
 
 func (s *service) GetUserByFilter(ctx context.Context, filter *model.UserFilter) (*model.User, error) {

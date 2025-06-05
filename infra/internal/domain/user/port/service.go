@@ -12,4 +12,5 @@ type Service interface {
 	IsValidToken(ctx context.Context, value string) bool
 	CreateToken(ctx context.Context, token model.TokenWhitelist) error
 	DeleteToken(ctx context.Context, token model.TokenWhitelist) error
+	DeleteAllTokens(ctx context.Context, id model.UserID) error
 }
