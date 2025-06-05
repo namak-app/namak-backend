@@ -6,13 +6,13 @@ import (
 
 	"github.com/KhoshMaze/khoshmaze-backend/internal/domain/user/model"
 	"github.com/KhoshMaze/khoshmaze-backend/internal/domain/user/port"
-	"gorm.io/gorm"
 )
 
 var (
 	ErrUserOnCreate           = errors.New("error on creating new user")
 	ErrUserCreationValidation = errors.New("validation failed")
 	ErrUserNotFound           = errors.New("user not found")
+	ErrTokenHash              = errors.New("error on hashing token value")
 )
 
 type service struct {
@@ -33,13 +33,26 @@ func (s *service) CreateUser(ctx context.Context, user model.User) (model.UserID
 	return userID, err
 }
 
-func (s *service) IsBannedToken(ctx context.Context, value string) bool {
-	err := s.repo.IsBannedToken(ctx, value)
-	return !errors.Is(err, gorm.ErrRecordNotFound)
+func (s *service) IsValidToken(ctx context.Context, value string) bool {
+	err := s.repo.IsValidToken(ctx, value)
+	if err != nil {
+		return false
+	}
+	return true
 }
 
-func (s *service) CreateBannedToken(ctx context.Context, token model.TokenBlacklist) error {
-	return s.repo.CreateBannedToken(ctx, token)
+func (s *service) CreateToken(ctx context.Context, token model.TokenWhitelist) error {
+	if err := token.HashTokenValue(); err != nil {
+		return ErrTokenHash
+	}
+	return s.repo.CreateToken(ctx, token)
+}
+
+func (s *service) DeleteToken(ctx context.Context, token model.TokenWhitelist) error {
+	if err := token.HashTokenValue(); err != nil {
+		return ErrTokenHash
+	}
+	return s.repo.DeleteToken(ctx, token)
 }
 
 func (s *service) GetUserByFilter(ctx context.Context, filter *model.UserFilter) (*model.User, error) {

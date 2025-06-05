@@ -26,21 +26,31 @@ func (r *userRepo) Create(ctx context.Context, userDomain model.User) (model.Use
 	return model.UserID(user.ID), r.db.Table("users").WithContext(ctx).Create(user).Error
 }
 
-func (r *userRepo) IsBannedToken(ctx context.Context, value string) error {
-	var token types.TokenBlacklist
-	q := r.db.Table("token_blacklists").Where("value = ?", value)
+func (r *userRepo) IsValidToken(ctx context.Context, value string) error {
+	var token types.TokenWhitelist
+	q := r.db.Table("token_whitelists").Where("value = ?", value)
 	return q.First(&token).Error
 
 }
 
-func (r *userRepo) CreateBannedToken(ctx context.Context, tokenDomain model.TokenBlacklist) error {
-	token := &types.TokenBlacklist{
+func (r *userRepo) CreateToken(ctx context.Context, tokenDomain model.TokenWhitelist) error {
+	token := &types.TokenWhitelist{
 		ExpiresAt: tokenDomain.ExpiresAt,
 		Value:     tokenDomain.Value,
 		UserID:    uint(tokenDomain.UserID),
 	}
 
-	return r.db.Table("token_blacklists").WithContext(ctx).Create(token).Error
+	return r.db.Table("token_whitelists").WithContext(ctx).Create(token).Error
+}
+
+func (r *userRepo) DeleteToken(ctx context.Context, tokenDomain model.TokenWhitelist) error {
+	token := &types.TokenWhitelist{
+		ExpiresAt: tokenDomain.ExpiresAt,
+		Value:     tokenDomain.Value,
+		UserID:    uint(tokenDomain.UserID),
+	}
+
+	return r.db.Table("token_whitelists").WithContext(ctx).Delete(token).Error
 }
 
 func (r *userRepo) GetByFilter(ctx context.Context, filter *model.UserFilter) (*model.User, error) {

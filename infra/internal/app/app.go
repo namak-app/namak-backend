@@ -62,7 +62,7 @@ func (a *app) setDB() error {
 
 	if err := db.AutoMigrate(
 		&types.User{},
-		&types.TokenBlacklist{},
+		&types.TokenWhitelist{},
 		&types.Outbox{},
 		&types.Notification{},
 		&types.SubscriptionPrice{},

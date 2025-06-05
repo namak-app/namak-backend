@@ -49,3 +49,19 @@ func UserStorageToDomain(user types.User) *model.User {
 
 	return userDomain
 }
+
+func TokenWhitelistDomainToStorage(tokenWhitelistDomain model.TokenWhitelist) *types.TokenWhitelist {
+	return &types.TokenWhitelist{
+		ExpiresAt: tokenWhitelistDomain.ExpiresAt,
+		Value:     tokenWhitelistDomain.Value,
+		UserID:    uint(tokenWhitelistDomain.UserID),
+	}
+}
+
+func TokenWhitelistStorageToDomain(tokenWhitelist types.TokenWhitelist) *model.TokenWhitelist {
+	return &model.TokenWhitelist{
+		ExpiresAt: tokenWhitelist.ExpiresAt,
+		Value:     tokenWhitelist.Value,
+		UserID:    model.UserID(tokenWhitelist.UserID),
+	}
+}
